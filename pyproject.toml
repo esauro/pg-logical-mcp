@@ -1,0 +1,42 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "pg-logical-mcp"
+version = "0.1.0"
+description = "Diagnose Postgres logical replication: slot WAL retention, walsender lag, stuck subscriptions, with gated remediation."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "GPL-3.0-or-later" }
+authors = [{ name = "Esau Rodriguez", email = "esauro@gmail.com" }]
+keywords = ["mcp", "postgres", "postgresql", "logical-replication", "cdc", "replication-slots"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Programming Language :: Python :: 3",
+    "Topic :: Database",
+]
+dependencies = [
+    "mcp>=1.2.0",
+    "psycopg[binary]>=3.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/esauro/pg-logical-mcp"
+Repository = "https://github.com/esauro/pg-logical-mcp"
+
+[project.scripts]
+pg-logical-mcp = "pg_logical_mcp.server:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/pg_logical_mcp"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

@@ -1,0 +1,53 @@
+# Two Postgres nodes wired as a logical-replication pair, both wal_level=logical.
+#
+#   docker compose -f docker/docker-compose.yml up
+#
+# Publisher is reachable on localhost:5433, subscriber on localhost:5434.
+# Both run as the `postgres` superuser FOR DEMO SIMPLICITY ONLY — production use
+# wants a deliberately scoped role (see README, "Privileges").
+name: pg-logical-mcp-demo
+
+x-pg-common: &pg-common
+  image: postgres:16
+  environment:
+    POSTGRES_USER: postgres
+    POSTGRES_PASSWORD: postgres
+    POSTGRES_DB: appdb
+  command:
+    - postgres
+    - -c
+    - wal_level=logical
+    - -c
+    - max_wal_senders=10
+    - -c
+    - max_replication_slots=10
+    # Small keep-size so Scenario 2 can actually trip invalidation quickly.
+    - -c
+    - max_slot_wal_keep_size=64MB
+
+services:
+  pg-publisher:
+    <<: *pg-common
+    container_name: pg-logical-publisher
+    ports:
+      - "5433:5432"
+    volumes:
+      - ./init-publisher.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    healthcheck:
+      # Healthy only once the publication exists, so the subscriber's
+      # CREATE SUBSCRIPTION below never races publisher init.
+      test: ["CMD-SHELL", "psql -U postgres -d appdb -tAc \"SELECT 1 FROM pg_publication WHERE pubname='app_pub'\" | grep -q 1"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+  pg-subscriber:
+    <<: *pg-common
+    container_name: pg-logical-subscriber
+    ports:
+      - "5434:5432"
+    depends_on:
+      pg-publisher:
+        condition: service_healthy
+    volumes:
+      - ./init-subscriber.sql:/docker-entrypoint-initdb.d/init.sql:ro
